@@ -7,7 +7,7 @@
 #define _METADATA_STRUCT
 
 typedef struct _metadata {
-	short blocksize;
+	short size;
 	char used;
 	short prev;
 	short next;
