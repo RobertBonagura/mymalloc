@@ -4,7 +4,10 @@
 static char myblock[4096];
 int isFirst = 1;
 
-
+//
+//	showMeta - Prints metadata information for given metaPtr, and continues
+//	iterating through next values.
+//
 void showMeta(metadata* head){
 	
 	metadata* current = head;
