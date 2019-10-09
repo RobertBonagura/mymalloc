@@ -4,13 +4,12 @@
 
 int main (int argc, char *argv[])
 {
-	char* ptr = (char*) malloc(sizeof(char) * 100);
-	printf("make works\n");
-	ptr[0] = 'h';
-	ptr[1] = 'i';
-	ptr[2] = '\0';
-
-	printf("%s\n", ptr);		
+	char* ptr1 = (char*) malloc(sizeof(char) * 89);
+	char* ptr2 = (char*) malloc(sizeof(char) * 39);
+	//char* ptr3 = (char*) malloc(sizeof(char) * 89);
+	//char* ptr4 = (char*) malloc(sizeof(char) * 89);
+	
+	showMeta((metadata*)ptr1);
 	
 	return 0;
 }
