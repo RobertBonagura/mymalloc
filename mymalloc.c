@@ -21,9 +21,7 @@ void showMeta(metadata* head){
 		printf("The size is: %d\n", current->size);
 		printf("This metadata is in use: %c\n", current->used);
 		printf("This metadata prev is stored at: %d\n", current->prev);
-		//printf("current - currentPrev = %d\n", current - current->prev);
 		printf("This metadata next is stored at: %d\n", current->next);
-		printf("currentNext - current = %d\n\n", current->next - current);
 		prevSize = current->size;
 		byteCount = byteCount + METADATA_SIZE + prevSize;
 		current = current->next;
@@ -47,10 +45,11 @@ void showMeta(metadata* head){
 metadata* makeFirst(int size){
 	
 	metadata meta = {size, '1', NULL, NULL};
-	*(metadata*)(myblock) = meta;
+	*((metadata*)(myblock)) = meta;
 	metadata* metaPtr = (metadata*) myblock;
 
 	short sizeLeft = 4096 - size - (2 * METADATA_SIZE);
+	// error handling in case this value is <= 0
 	metadata next = {sizeLeft, '0', metaPtr, NULL}; 
 	*(metadata*)(myblock + METADATA_SIZE + size) = next;
 	metadata* nextPtr = (metadata*)(myblock + METADATA_SIZE + size);
@@ -80,15 +79,19 @@ metadata* makeFirst(int size){
 //
 metadata* updateMeta(metadata* metaPtr, int size, int prevMetaDistance, int byteCount){
 	
-	metadata* prevPtr = metaPtr - prevMetaDistance;	
-	printf("prevPtr is at %d\nWhich should be %d less than metaPtr\n", prevPtr, prevMetaDistance);	
-	short nextSize = 4096 - byteCount;	// check if nextSize is negative
-	metadata next = {nextSize, '0', metaPtr, NULL};
-	metadata* nextPtr = (metadata*)(metaPtr + size + METADATA_SIZE); 
-	*(nextPtr) = next;
+	
+	short nextSize = metaPtr->size - METADATA_SIZE - size;
 
-	metadata meta = {size, '1', prevPtr, nextPtr};
-	*metaPtr = meta;
+	metadata newmeta = {nextSize, '0', metaPtr, metaPtr->next};
+	*((metadata*) (((char*) metaPtr) + METADATA_SIZE + size)) =  newmeta;
+	metadata* newPtr = (metadata*) (((char*) metaPtr) + METADATA_SIZE + size);
+	metaPtr->next = newPtr;
+	if(newPtr->next != NULL) {
+		newPtr->next->prev = newPtr;
+	}
+	metaPtr->size = size;
+	metaPtr->used = 1;
+	return metaPtr;
 }
 
 
@@ -109,11 +112,12 @@ metadata* getNextMetadata(int size){
 		metadata* current = (metadata*) myblock;
 		int prevSize = 0;
 		int byteCount = 0;
-		while (current->used == '1' || current->size < size){
+		while (current->next != NULL || current->used == '1' || current->size < size){
 			prevSize = current->size;
 			byteCount = byteCount + METADATA_SIZE + prevSize;
 			current = current->next;
 		}
+		// Handle if pointer is equal to NULL
 		int prevMetaDistance = prevSize + METADATA_SIZE;
 		byteCount = byteCount + METADATA_SIZE + size;
 		metadata* newCurrent = 
@@ -127,6 +131,8 @@ void* mymalloc(int size, int line, char* file) {
 
 	metadata* metaPtr = (metadata*) getNextMetadata(size);
 	metadata meta = *metaPtr;
+
+	// Add to metadata pointer.
 	
 	if (size <= meta.size){
 		void* ptr = metaPtr;
