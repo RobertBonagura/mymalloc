@@ -1,6 +1,8 @@
-all: memgrind.c mymalloc.o
-	gcc -o memgrind memgrind.c mymalloc.o
+all: test.c mymalloc.o
+	gcc test.c mymalloc.o
 mymalloc.o: mymalloc.c
 	gcc -c mymalloc.c
 clean:
-	rm memgrind; rm mymalloc.o
+	rm a.out; rm mymalloc.o
+test0:
+	make clean; make all
