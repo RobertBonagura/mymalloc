@@ -13,9 +13,8 @@ typedef struct _metadata {
 	struct _metadata* next;
 } metadata;
 
-void* mymalloc(int size, int line, char* file);
-void myfree(short index);
-void stitch(short prev_index, short next_index);
 
+void* mymalloc(int size, int line, char* file);
+void* myfree(void* ptr, int line, char* file);
 
 #endif
