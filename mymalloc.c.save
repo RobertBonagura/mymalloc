@@ -4,8 +4,6 @@
 static char myblock[4096];
 int isFirst = 1;
 
-#define I_AM_DEBUGGING 1
-
 //
 //	showMeta - Prints metadata information for given metaPtr, and continues
 //	iterating through next values.
@@ -81,19 +79,20 @@ metadata* makeFirst(int size){
 //					This assumes unused metadata has no data beyond it.
 //
 //
-metadata* updateMeta(metadata* metaPtr, int size){
+metadata* updateMeta(metadata* metaPtr, int size, int prevMetaDistance, int byteCount){
+	
 	
 	short nextSize = metaPtr->size - METADATA_SIZE - size;
 
 	metadata newmeta = {nextSize, '0', metaPtr, metaPtr->next};
 	*((metadata*) (((char*) metaPtr) + METADATA_SIZE + size)) =  newmeta;
-	metadata* newPtr = &newmeta;
+	metadata* newPtr = (metadata*) (((char*) metaPtr) + METADATA_SIZE + size);
 	metaPtr->next = newPtr;
 	if(newPtr->next != NULL) {
 		newPtr->next->prev = newPtr;
 	}
 	metaPtr->size = size;
-	metaPtr->used = '1';
+	metaPtr->used = 1;
 	return metaPtr;
 }
 
@@ -113,18 +112,20 @@ metadata* getNextMetadata(int size){
 		return metaPtr;
 	} else {
 		metadata* current = (metadata*) myblock;
-		while (current != NULL && current->next != NULL && (current->used == '1' || current->size < size)){
-			if(I_AM_DEBUGGING) printf("\ttraversal start...\n");
+		int prevSize = 0;
+		int byteCount = 0;
+		while (current->next != NULL || current->used == '1' || current->size < size){
+			prevSize = current->size;
+			byteCount = byteCount + METADATA_SIZE + prevSize;
 			current = current->next;
-                        if(I_AM_DEBUGGING) printf("\t...traversal success\n");
 		}
 		if(current == NULL) {
 			return(NULL);
 		}
-		if(I_AM_DEBUGGING) printf("\tcalling updateMeta()...\n");
-		metadata* newCurrent = updateMeta(current, size);
-                if(I_AM_DEBUGGING) printf("\t...cleared updateMeta()\n");
-	
+		int prevMetaDistance = prevSize + METADATA_SIZE;
+		byteCount = byteCount + METADATA_SIZE + size;
+		metadata* newCurrent = 
+			updateMeta(current, size, prevMetaDistance, byteCount);	
 		return newCurrent;
 	}
 
@@ -132,19 +133,18 @@ metadata* getNextMetadata(int size){
 
 void* mymalloc(int size, int line, char* file) {
 
-        if(I_AM_DEBUGGING) printf("\tcalling getNextMetadata()...\n");
 	metadata* metaPtr = (metadata*) getNextMetadata(size);
-        if(I_AM_DEBUGGING) printf("\t...cleared getNextMetadata()\n");
+	metadata meta = *metaPtr;
 
 	// Add to metadata pointer.
 	
-	if(metaPtr == NULL) {
-		printf("Dynamic memory saturation error on line %d in file %s\n", line, file);
-		return(NULL);
-	}
-	
-	void* ptr = metaPtr;
-	return ptr; 
+	if (size <= meta.size){
+		void* ptr = metaPtr;
+		return ptr;
+	} else {
+		printf("Error on line %d in file %s\n", line, file);
+		return;
+	} 
 }
 
 /*
@@ -153,6 +153,7 @@ metadata* ptr - user-given pointer to check for validity.
 returns 1 if valid pointer, 0 otherwise.
 */
 int isPointerValid(metadata* ptr) {
+	printf("a");
 	metadata* cur = (metadata*) myblock;
 	while(cur != NULL) {
 		if(cur == ptr) {
@@ -169,41 +170,32 @@ metadata* ptr - the first of a chain of free blocks.
 returns the size of the conglomerated block.
 */
 short stitchFreeBlocks(metadata* ptr) {
+	printf("2");
 	if(ptr == NULL) {
 		return(0);
 	}
-	if(ptr->used == '1') {
+	if(ptr->used == 1) {
 		return(0);
 	}
-	short newSize = ptr->size;
-	metadata* cur = ptr->next;
-	while(cur != NULL && cur->used == '0') {
-		newSize += METADATA_SIZE + cur->size;
-		cur = cur->next;
-	}
-	ptr->size = newSize;
-	ptr->next = cur;
-	cur->prev = ptr;
-
-	return(ptr->size); 
+	ptr->next->prev = ptr->prev;
+	ptr->prev->next = ptr->next;
+	return(ptr->size + METADATA_SIZE + stitchFreeBlocks(ptr->next)); 
 }
 
 void* myfree(void* ptr, int line, char* file) {
-//	printf("myfree() call\n");
-	metadata* metaPtr = (metadata*) ptr;
-//	printf("\tptr cast to metaPtr\n");
+	metadata* metaPtr = (((char*) ptr) - METADATA_SIZE);
+	printf("b");
 	if (isPointerValid(ptr)) {
-//		printf("\tptr is valid\n");
-		metaPtr->used = '0';
-        	while(metaPtr != NULL && metaPtr->prev != NULL && metaPtr->prev->used != '1') {
+		metaPtr->used = 0;
+        	while(metaPtr != NULL || metaPtr->prev != NULL || metaPtr->prev->used != 1) {
                 	metaPtr = metaPtr->prev;
         	}
         	if(metaPtr == NULL) {
         	        return(NULL);
 	        }
-//		printf("/tfirst free block size %hi\n", metaPtr->size);
-		metaPtr->size = stitchFreeBlocks(metaPtr);		
-//                printf("/tfirst free block size after %hi\n", metaPtr->size);
+		printf("1");
+		metaPtr->size = stitchFreeBlocks(metaPtr);	
+		printf("3\n");	
 	
 		return((void*) metaPtr);
 	}
