@@ -51,6 +51,7 @@ double workload_a() {
 	for(i=0; i<150; ++i) {
 		ptr = malloc(sizeof(char));
 		free(ptr);
+		printf("malloc()ed and free()ed %d\n", i);
 	}
 	clock_t end = clock();
 	printf("Workload A completed.\n");

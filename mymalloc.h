@@ -1,7 +1,7 @@
 #ifndef _MYMALLOC_H
 #define _MYMALLOC_H
 
-#define METADATA_SIZE  11
+#define METADATA_SIZE  sizeof(metadata)
 #define malloc(x) mymalloc((x), __LINE__, __FILE__)
 #define free(x) myfree((x), __LINE__, __FILE__)
 
@@ -15,6 +15,8 @@ typedef struct _metadata {
 
 
 void* mymalloc(int size, int line, char* file);
-void* myfree(void* ptr, int line, char* file);
+void myfree(void* ptr, int line, char* file);
+void stitch(short prev_index, short next_index);
+
 
 #endif
