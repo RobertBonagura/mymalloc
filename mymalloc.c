@@ -4,7 +4,7 @@
 static char myblock[4096];
 int isFirst = 1;
 
-#define I_AM_DEBUGGING 1
+#define I_AM_DEBUGGING 0
 
 //
 //	showMeta - Prints metadata information for given metaPtr, and continues
@@ -12,18 +12,22 @@ int isFirst = 1;
 //
 void showMeta(metadata* head){
 	
+	printf("metadata: %d\n", sizeof(metadata));	
+	printf("char: %d\n", sizeof(char));	
+	printf("metaPTr: %d\n", sizeof(metadata*));	
+	printf("short: %d\n", sizeof(short));	
 	metadata* current = head;
 	int byteCount = 0;
 	int prevSize = 0;
 	while (byteCount < 4096){
 		metadata meta = *current;
 		printf("---\n");
-		printf("This metaPtr is stored at: %d\n", current);
+		printf("This metaPtr is stored at: %p\n", current);
 		printf("---\n");
 		printf("The size is: %d\n", current->size);
 		printf("This metadata is in use: %c\n", current->used);
-		printf("This metadata prev is stored at: %d\n", current->prev);
-		printf("This metadata next is stored at: %d\n", current->next);
+		printf("This metadata prev is stored at: %p\n", current->prev);
+		printf("This metadata next is stored at: %p\n", current->next);
 		prevSize = current->size;
 		byteCount = byteCount + METADATA_SIZE + prevSize;
 		current = current->next;
@@ -51,9 +55,6 @@ metadata* makeFirst(int size){
 	metadata* metaPtr = (metadata*) myblock;
 
 	short sizeLeft = 4096 - size - (2 * METADATA_SIZE);
-	if(sizeLeft <= 0) {
-		return(NULL);
-	}
 	metadata next = {sizeLeft, '0', metaPtr, NULL}; 
 	*(metadata*)(myblock + METADATA_SIZE + size) = next;
 	metadata* nextPtr = (metadata*)(myblock + METADATA_SIZE + size);
@@ -84,12 +85,11 @@ metadata* makeFirst(int size){
 metadata* updateMeta(metadata* metaPtr, int size){
 	
 	short nextSize = metaPtr->size - METADATA_SIZE - size;
-
 	metadata newmeta = {nextSize, '0', metaPtr, metaPtr->next};
-	*((metadata*) (((char*) metaPtr) + METADATA_SIZE + size)) =  newmeta;
-	metadata* newPtr = &newmeta;
+	*((metadata*) (((char*) metaPtr) + METADATA_SIZE + size)) = newmeta;
+	metadata* newPtr = (metadata*) (((char*) metaPtr) + METADATA_SIZE + size);
 	metaPtr->next = newPtr;
-	if(newPtr->next != NULL) {
+	if (newPtr->next != NULL){
 		newPtr->next->prev = newPtr;
 	}
 	metaPtr->size = size;
@@ -113,17 +113,17 @@ metadata* getNextMetadata(int size){
 		return metaPtr;
 	} else {
 		metadata* current = (metadata*) myblock;
-		while (current != NULL && current->next != NULL && (current->used == '1' || current->size < size)){
+		while (current->next != NULL || current->used == '1' || current->size <= size){
 			if(I_AM_DEBUGGING) printf("\ttraversal start...\n");
 			current = current->next;
-                        if(I_AM_DEBUGGING) printf("\t...traversal success\n");
+            if(I_AM_DEBUGGING) printf("\t...traversal success\n");
 		}
-		if(current == NULL) {
+		if (current == NULL) {
 			return(NULL);
 		}
 		if(I_AM_DEBUGGING) printf("\tcalling updateMeta()...\n");
 		metadata* newCurrent = updateMeta(current, size);
-                if(I_AM_DEBUGGING) printf("\t...cleared updateMeta()\n");
+        if(I_AM_DEBUGGING) printf("\t...cleared updateMeta()\n");
 	
 		return newCurrent;
 	}
@@ -132,11 +132,19 @@ metadata* getNextMetadata(int size){
 
 void* mymalloc(int size, int line, char* file) {
 
-        if(I_AM_DEBUGGING) printf("\tcalling getNextMetadata()...\n");
+    if(I_AM_DEBUGGING) printf("\tcalling getNextMetadata()...\n");
 	metadata* metaPtr = (metadata*) getNextMetadata(size);
-        if(I_AM_DEBUGGING) printf("\t...cleared getNextMetadata()\n");
-
+    if(I_AM_DEBUGGING) printf("\t...cleared getNextMetadata()\n");
+	metadata meta = *metaPtr;
 	// Add to metadata pointer.
+	
+	if (size <= meta.size){
+		void* ptr = metaPtr;
+		return ptr;
+	} else {
+		printf("Error on line %d in file %s\n", line, file);
+		return;
+	}
 	
 	if(metaPtr == NULL) {
 		printf("Dynamic memory saturation error on line %d in file %s\n", line, file);
@@ -145,7 +153,10 @@ void* mymalloc(int size, int line, char* file) {
 	
 	void* ptr = metaPtr;
 	return ptr; 
+	
+
 }
+
 
 /*
 isPointerValid()
@@ -177,39 +188,56 @@ short stitchFreeBlocks(metadata* ptr) {
 	}
 	short newSize = ptr->size;
 	metadata* cur = ptr->next;
-	while(cur != NULL && cur->used == '0') {
-		newSize += METADATA_SIZE + cur->size;
-		cur = cur->next;
+	while(cur != NULL) {
+		if (cur->used == '0'){
+			printf("inside while\n");
+			newSize += METADATA_SIZE + cur->size;
+			cur = cur->next;
+		}
+		else break;
 	}
 	ptr->size = newSize;
 	ptr->next = cur;
-	cur->prev = ptr;
-
+	if (cur != NULL) {
+		cur->prev = ptr;
+	}
 	return(ptr->size); 
 }
 
-void* myfree(void* ptr, int line, char* file) {
-//	printf("myfree() call\n");
+void myfree(void* ptr, int line, char* file) {
+	printf("myfree() call\n");
 	metadata* metaPtr = (metadata*) ptr;
-//	printf("\tptr cast to metaPtr\n");
 	if (isPointerValid(ptr)) {
-//		printf("\tptr is valid\n");
+		printf("\tptr is valid\n");
+		printf("\tCurrent pointer is %p, prev is %p\n", metaPtr, metaPtr->prev);
 		metaPtr->used = '0';
-        	while(metaPtr != NULL && metaPtr->prev != NULL && metaPtr->prev->used != '1') {
-                	metaPtr = metaPtr->prev;
-        	}
-        	if(metaPtr == NULL) {
-        	        return(NULL);
-	        }
-//		printf("/tfirst free block size %hi\n", metaPtr->size);
-		metaPtr->size = stitchFreeBlocks(metaPtr);		
-//                printf("/tfirst free block size after %hi\n", metaPtr->size);
+		while (metaPtr != NULL){
+			printf("\tin while\n");
+			if ( metaPtr->prev != NULL) { // This line here needs to be fixed
+				printf("\tprev is not null\n");
+				if (metaPtr->prev == NULL){
+					break;
+				}
+				printf("\tprev is %p, and NULL is %p\n", metaPtr->prev, NULL);
+				if (metaPtr->prev->used == '0'){
+					metaPtr = metaPtr->prev;
+				}
+				else break;
+			}
+			else break;
+        }
+		printf("\t%d\n", metaPtr);
+        if(metaPtr == NULL) {
+			return;
+	    }
+		printf("\tfirst free block size %hi\n", metaPtr->size);
+		metaPtr->size = stitchFreeBlocks(metaPtr);	
+        printf("\tfirst free block size after %hi\n", metaPtr->size);
 	
-		return((void*) metaPtr);
+		return;
 	}
 	else {
-                printf("Invalid free() on line %d in file %s\n", line, file);
-                return;
+    	printf("Invalid free() on line %d in file %s\n", line, file);
+    	return;
 	}	
-
 }
