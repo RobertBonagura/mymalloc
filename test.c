@@ -8,6 +8,8 @@ const int LOCAL_RAND_MAX = 64;
 int main (int argc, char *argv[])
 {
 
+
+
         printf("\nSTARTING MALLOC:\n\n");
 
 	char* ptr1 = malloc(sizeof(char) * (rand() % LOCAL_RAND_MAX));
@@ -17,8 +19,9 @@ int main (int argc, char *argv[])
         char* ptr5 = malloc(sizeof(char) * (rand() % LOCAL_RAND_MAX));
         char* ptr6 = malloc(sizeof(char) * (rand() % LOCAL_RAND_MAX));
 
-	
-	showMeta((metadata*)ptr1);
+	print_status();
+
+
 	
 	printf("\nSTARTING FREE:\n\n");
 
@@ -26,7 +29,7 @@ int main (int argc, char *argv[])
         free(ptr3);
         free(ptr6);
 
-        showMeta((metadata*)ptr1);
+        print_status();
 
 	return 0;
 }
