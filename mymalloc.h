@@ -19,8 +19,7 @@ typedef struct _metadata {
 // Allocation functions:
 void* mymalloc(size_t user_size, int line, char* file);
 metadata* find_block(size_t user_size);
-int split_block(metadata* meta_ptr, size_t user_size);
-void* get_return_pointer(metadata* meta_ptr);
+void* split_block(metadata* meta_ptr, size_t user_size);
 
 // Free functions:
 void myfree(void* user_ptr, int line, char* file);
