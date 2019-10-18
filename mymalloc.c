@@ -3,6 +3,7 @@
 #define DEBUG_ACTIVE 1
 #define HEAP_SIZE 4096
 
+
 static char myblock[HEAP_SIZE];
 int num_blocks = 0;
 
@@ -54,6 +55,7 @@ metadata* find_block(size_t user_size) {
                 if(DEBUG_ACTIVE) printf("made first block...");
 
 	}
+
 
 	// Looking through metadata for appropriate empty block.
 	if(DEBUG_ACTIVE) printf("searching for at least %d unused...", (short)user_size);
@@ -110,7 +112,7 @@ void* split_block(metadata* meta_ptr, size_t user_size) {
 	// If the requested block was not found.
 	if(c0 == num_blocks) {
 	        if(DEBUG_ACTIVE) printf("did not find block\n");
-		return(NULL);
+	        return(NULL);
 	}
 
 	// Splitting the requested block.

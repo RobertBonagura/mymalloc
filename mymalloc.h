@@ -1,6 +1,5 @@
 #ifndef _MYMALLOC_H
 #define _MYMALLOC_H
-
 #include <stdio.h>
 #include <limits.h>
 
@@ -28,6 +27,5 @@ int stitch();
 
 // Debugging functions:
 void print_status();
-
 
 #endif
