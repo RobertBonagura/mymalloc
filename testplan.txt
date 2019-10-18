@@ -1,0 +1,32 @@
+
+
+Workload E:
+
+The purpose of Workload E is to make sure that the underlying static block
+of memory reuses space after a pointer is returned. To show this, we malloc()ed
+values of up to 64 bytes until it returned NULL, at which point we malloc()ed
+smaller and smaller values until a request to malloc() 1 byte returned NULL.
+
+Once this request is rejected, one can assert that the underlying arrray is
+close to full capacity. At this point we randomly selected one of these
+pointers, called free() on it, and then malloc()ed a pointer of the same size.
+This process gets repeated 150 times.
+
+Workload F: 
+
+The purpose of Workload F is twofold. It randomly picks a number and if it is
+even, it runs case (1), if odd it runs (2).
+
+(1) To prove that our version of malloc returns a dereferenceable pointer
+we malloc() a pointer, to which a random string of the appropriate length is
+stored. This pointer is used to print the random string to stdout, and then 
+it is free()ed.
+
+(2) To show that malloc() and free() can handle all of the Detectable Errors
+specified on the Assignment Sheet, we create an enum type to represent each of
+the four cases specified on the assignment sheet, Free A, B, C and Malloc A.
+One of these 4 cases is randomly chosen and run, and the apprpriate error
+message with the corresponding line number is printed to console. 
+
+This random random choice between running one of the two cases above is 
+done 150 times.

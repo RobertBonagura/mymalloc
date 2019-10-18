@@ -112,7 +112,7 @@ double workload_d() {
 
         printf("Workload D: Randomly choosing between allocating and freeing between 1 and 64 bytes until 50 allocations and frees have been performed.\n");
         clock_t start = clock();
-	//printf("Working...\n");
+	printf("Working...\n");
         i_malloc = 0;
         i_free = 0;
 	total_used = 0;
@@ -148,15 +148,114 @@ double workload_d() {
 }
 
 double workload_e() {
+	printf("Workload E: Fills heap with pointers, and then continues free and mallocing pointers 150 times. See testplan.txt for details.\n");
 	clock_t start = clock();
+	printf("Working...\n");
+	
+	// Initialize the arrays to NULL
+	void* ptrs[4096];
+	int ptrSizes[4096];
+	int i_ptr;
+	for (i_ptr = 0; i_ptr < 4096; i_ptr++){
+		ptrs[i_ptr] = 0;
+		ptrSizes[i_ptr] = 0;
+	}
+
+	// Store pointers untill malloc returns null
+	i_ptr = 0;
+	int randNum = (rand() % 64) + 1;
+	void* ptr = malloc(sizeof(char) * randNum);
+	while (ptr != NULL){
+		ptrs[i_ptr] = ptr;
+		ptrSizes[i_ptr] = randNum;
+		i_ptr++;
+		randNum = (rand() % 32) + 1;
+		ptr = malloc(sizeof(char) * randNum);
+	}
+	while (ptr != NULL){
+		ptrs[i_ptr] = ptr;
+		ptrSizes[i_ptr] = randNum;
+		i_ptr++;
+		randNum = (rand() % 10) + 1;
+		ptr = malloc(sizeof(char) * randNum);
+	}
+	while (ptr != NULL){
+		ptrs[i_ptr] = ptr;
+		ptrSizes[i_ptr] = randNum;
+		i_ptr++;
+		randNum = (rand() % 1) + 1;
+		ptr = malloc(sizeof(char) * randNum);
+	}
+	int numPtrs = i_ptr;
+
+	// Choose a pointer, free it, and then remalloc
+	int i_reps;
+	int size;
+	for (i_reps = 0; i_reps < 150; i_reps++){
+		randNum = (rand() % i_ptr);
+		free(ptrs[randNum]);
+		size = ptrSizes[randNum];
+		ptr = malloc(sizeof(char) * size);
+		ptrs[randNum] = ptr;
+	}
+
+	// Then free every pointer
+	int i;
+	for (i = 0; i < numPtrs; i++){
+		free(ptrs[i]);
+	}
 	clock_t end = clock();
         return((end - start)/(double)CLOCKS_PER_SEC);
 }
 
 double workload_f() {
-        clock_t start = clock();
-        clock_t end = clock();
-        return((end - start)/(double)CLOCKS_PER_SEC);
+	printf("Workload F: Splits 50:50 chance of either mallocing space to create and print a string, followed by freeing that pointer OR randomly test one of the Detectable Errors 	described in the assignment sheet. This is done 150 times. \n");
+	clock_t start = clock();
+	printf("Working...\n");
+	int i_reps;
+	for (i_reps = 0; i_reps < 150; i_reps++){
+		int fifty_fifty = rand() % 2;
+		// Test malloc functionality by using pointer to print random string.
+		if (fifty_fifty == 0){
+			int randNum = (rand() % 64) + 1;
+			char* ptr = (char*) malloc(sizeof(char) * randNum);
+			int i;
+			for (i = 0; i < randNum; i++){
+				char randLetter = (rand() % 26) + 97;
+				ptr[i] = randLetter;
+			}
+			ptr[i-1] = '\0';
+			printf("%s\n", ptr);
+			free(ptr);
+		}
+		// Test Detectable Errors described on assignment sheet.
+		else {
+			DetectableError testCase = (rand() % 4);
+			int x;
+			int *y;
+			char* p;
+			char* q;
+			switch (testCase){
+			case FreeA:
+				free((int*) x);	 
+				break;			
+			case FreeB:
+				free(y);
+				break;
+			case FreeC:
+				p = (char*)malloc(100);
+				free(p);
+				free(p);
+				break;
+			case MallocA:
+				q = (char*)malloc(4097);
+				break;
+			}
+		}
+	}
+    clock_t end = clock();
+	printf("Workload F completed.\n");
+    return((end - start)/(double)CLOCKS_PER_SEC);
 }
 
 

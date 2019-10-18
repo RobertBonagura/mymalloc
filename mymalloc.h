@@ -15,6 +15,8 @@ typedef struct _metadata {
 	short size;
 } metadata;
 
+typedef enum _DetectableError {FreeA, FreeB, FreeC, MallocA} DetectableError;
+
 // Allocation functions:
 void* mymalloc(size_t user_size, int line, char* file);
 metadata* find_block(size_t user_size);

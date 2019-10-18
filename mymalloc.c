@@ -1,6 +1,6 @@
 #include "mymalloc.h"
 
-#define DEBUG_ACTIVE 1
+#define DEBUG_ACTIVE 0
 #define HEAP_SIZE 4096
 
 
