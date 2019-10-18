@@ -47,11 +47,11 @@ double workload_a() {
 	
 	printf("Workload A: 150 cycles of allocating and immediately freeing 1 byte.\n");
 	clock_t start = clock();
-	printf("Working...\n");
+	//printf("Working...\n");
 	for(i=0; i<150; ++i) {
 		ptr = malloc(sizeof(char));
 		free(ptr);
-		printf("malloc()ed and free()ed %d\n", i);
+		//printf("malloc()ed and free()ed %d\n", i);
 	}
 	clock_t end = clock();
 	printf("Workload A completed.\n");
@@ -64,13 +64,13 @@ double workload_b() {
 
         printf("Workload B: 3 cycles of allocating 1 byte for each index in a 50-cell array, then freeing each index in the array.\n");
         clock_t start = clock();
-	printf("Working...\n");
+	//printf("Working...\n");
 	for(i=0; i<3; ++i) {
 		for(j=0; j<50; ++j) {
-			arr[i] = malloc(sizeof(char));
+			arr[j] = malloc(sizeof(char));
 		}
                 for(j=0; j<50; ++j) {
-                        free(arr[i]);
+                        free(arr[j]);
                 }
 	}
 	clock_t end = clock();
@@ -84,7 +84,7 @@ double workload_c() {
 	
         printf("Workload C: Randomly choosing between allocating and freeing 1 byte until 50 allocations and frees have been performed.\n");
         clock_t start = clock();
-	printf("Working...\n");
+	//printf("Working...\n");
 	i_malloc = 0;
 	i_free = 0;
 	while(i_malloc<50) {
@@ -112,7 +112,7 @@ double workload_d() {
 
         printf("Workload D: Randomly choosing between allocating and freeing between 1 and 64 bytes until 50 allocations and frees have been performed.\n");
         clock_t start = clock();
-	printf("Working...\n");
+	//printf("Working...\n");
         i_malloc = 0;
         i_free = 0;
 	total_used = 0;
