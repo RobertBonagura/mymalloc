@@ -1,22 +1,31 @@
 #ifndef _MYMALLOC_H
 #define _MYMALLOC_H
+#include <stdio.h>
+#include <limits.h>
 
-#define METADATA_SIZE  sizeof(metadata)
 #define malloc(x) mymalloc((x), __LINE__, __FILE__)
 #define free(x) myfree((x), __LINE__, __FILE__)
 
-typedef struct _metadata {
-	
+/*
+The size attribute of metadata is a signed short, conveying information about block size and usage.
+block size: magnitude of metadata.size. 
+block used: sign of metadata.size; negative is unused, positive is used.
+*/
+typedef struct _metadata {	
 	short size;
-	char used;
-	struct _metadata* prev;
-	struct _metadata* next;
 } metadata;
 
+// Allocation functions:
+void* mymalloc(size_t user_size, int line, char* file);
+metadata* find_block(size_t user_size);
+void* split_block(metadata* meta_ptr, size_t user_size);
 
-void* mymalloc(int size, int line, char* file);
-void myfree(void* ptr, int line, char* file);
-void stitch(short prev_index, short next_index);
+// Free functions:
+void myfree(void* user_ptr, int line, char* file);
+metadata* mark_unused(void* user_ptr);
+int stitch();
 
+// Debugging functions:
+void print_status();
 
 #endif

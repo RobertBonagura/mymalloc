@@ -1,243 +1,268 @@
-#include <stdio.h>
 #include "mymalloc.h"
 
-static char myblock[4096];
-int isFirst = 1;
+#define DEBUG_ACTIVE 1
+#define HEAP_SIZE 4096
 
-#define I_AM_DEBUGGING 0
 
-//
-//	showMeta - Prints metadata information for given metaPtr, and continues
-//	iterating through next values.
-//
-void showMeta(metadata* head){
-	
-	printf("metadata: %d\n", sizeof(metadata));	
-	printf("char: %d\n", sizeof(char));	
-	printf("metaPTr: %d\n", sizeof(metadata*));	
-	printf("short: %d\n", sizeof(short));	
-	metadata* current = head;
-	int byteCount = 0;
-	int prevSize = 0;
-	while (byteCount < 4096){
-		metadata meta = *current;
-		printf("---\n");
-		printf("This metaPtr is stored at: %p\n", current);
-		printf("---\n");
-		printf("The size is: %d\n", current->size);
-		printf("This metadata is in use: %c\n", current->used);
-		printf("This metadata prev is stored at: %p\n", current->prev);
-		printf("This metadata next is stored at: %p\n", current->next);
-		prevSize = current->size;
-		byteCount = byteCount + METADATA_SIZE + prevSize;
-		current = current->next;
+static char myblock[HEAP_SIZE];
+int num_blocks = 0;
+
+
+
+// START ALLOCATION FUNCTIONS
+
+void* mymalloc(size_t user_size, int line, char* file) {
+
+	// Finding an empty block with enough space.
+	metadata* meta_ptr = find_block(user_size);
+
+	// Splitting the empty block into a used and unused part.
+	void* return_pointer = split_block(meta_ptr, user_size);
+	if(return_pointer == NULL) {
+		printf("mymalloc() error on line %d in file %s.\n", line, file);
 	}
 
+	return(return_pointer);
 }
 
+metadata* find_block(size_t user_size) {
+	int c0;	
 
+	if(DEBUG_ACTIVE) printf("find_block(): ");
 
-//
-//	makeFirst - creates first metadata value based on given size needed, and
-//	writes it to the static array.
-//
-//	1. metadata value is initially written to static array not containing any
-//	pointers.
-//	2. sizeLeft for next metadata value is calculated, and then this value is
-//	created, stored in the array, and then addressed by a pointer used by
-//	metaPtr->next.
-//	3. Global isFirst flag is turned off and the new pointer is returned.
-//
-metadata* makeFirst(int size){
-	
-	metadata meta = {size, '1', NULL, NULL};
-	*((metadata*)(myblock)) = meta;
-	metadata* metaPtr = (metadata*) myblock;
-
-	short sizeLeft = 4096 - size - (2 * METADATA_SIZE);
-	metadata next = {sizeLeft, '0', metaPtr, NULL}; 
-	*(metadata*)(myblock + METADATA_SIZE + size) = next;
-	metadata* nextPtr = (metadata*)(myblock + METADATA_SIZE + size);
-	metaPtr->next = nextPtr;
-	isFirst = 0;
-	return metaPtr;
-}
-
-
-
-
-//
-//	UpdateMeta - Takes metadata ptr and returns it with accurate size, 
-//					used, prev and next values.
-
-//	1. Uses pointer arithmetic to determine previous meta ptr
-//	2. Creates next meta and intializes it to {'rest of array', unused, metaPtr, NULL.}  
-//	3. Writes next value and meta value to array by derferencing pointer
-//	
-//	metadata* metaPtrb - the pointer to metadata in char array
-//	int size - the size of this metadata
-//	in prevMetaDistance - the number of bytes the previous meta is from this one
-//	int byteCount - the 1-based index of the metadata in the char array 
-//					(4096 - bytecount) represents the number of bytes remaining.
-//					This assumes unused metadata has no data beyond it.
-//
-//
-metadata* updateMeta(metadata* metaPtr, int size){
-	
-	short nextSize = metaPtr->size - METADATA_SIZE - size;
-	metadata newmeta = {nextSize, '0', metaPtr, metaPtr->next};
-	*((metadata*) (((char*) metaPtr) + METADATA_SIZE + size)) = newmeta;
-	metadata* newPtr = (metadata*) (((char*) metaPtr) + METADATA_SIZE + size);
-	metaPtr->next = newPtr;
-	if (newPtr->next != NULL){
-		newPtr->next->prev = newPtr;
+	// If user_size larger than max short value.
+	if(user_size > SHRT_MAX) {
+		if(DEBUG_ACTIVE) printf("user size too large.\n");
+		return(NULL);
 	}
-	metaPtr->size = size;
-	metaPtr->used = '1';
-	return metaPtr;
-}
-
-
-
-//
-//	getNextMetadata - Loops through metadata stored in static array, untill
-//	available metadata of the appropriate size is found.
-//	If this is the first time mymalloc is called, makeFirst is called.
-//	Otherwise, updating recent most metadata value.
-//
-//
-metadata* getNextMetadata(int size){
-	
-	if (isFirst == 1){
-		metadata* metaPtr = makeFirst(size);
-		return metaPtr;
-	} else {
-		metadata* current = (metadata*) myblock;
-		while (current->next != NULL || current->used == '1' || current->size <= size){
-			if(I_AM_DEBUGGING) printf("\ttraversal start...\n");
-			current = current->next;
-            if(I_AM_DEBUGGING) printf("\t...traversal success\n");
-		}
-		if (current == NULL) {
-			return(NULL);
-		}
-		if(I_AM_DEBUGGING) printf("\tcalling updateMeta()...\n");
-		metadata* newCurrent = updateMeta(current, size);
-        if(I_AM_DEBUGGING) printf("\t...cleared updateMeta()\n");
-	
-		return newCurrent;
-	}
-
-}
-
-void* mymalloc(int size, int line, char* file) {
-
-    if(I_AM_DEBUGGING) printf("\tcalling getNextMetadata()...\n");
-	metadata* metaPtr = (metadata*) getNextMetadata(size);
-    if(I_AM_DEBUGGING) printf("\t...cleared getNextMetadata()\n");
-	metadata meta = *metaPtr;
-	// Add to metadata pointer.
-	
-	if (size <= meta.size){
-		void* ptr = metaPtr;
-		return ptr;
-	} else {
-		printf("Error on line %d in file %s\n", line, file);
-		return;
-	}
-	
-	if(metaPtr == NULL) {
-		printf("Dynamic memory saturation error on line %d in file %s\n", line, file);
+	if(user_size <= 0) {
+		if(DEBUG_ACTIVE) printf("user size negative or zero.\n");
 		return(NULL);
 	}
 	
-	void* ptr = metaPtr;
-	return ptr; 
-	
-
-}
-
-
-/*
-isPointerValid()
-metadata* ptr - user-given pointer to check for validity.
-returns 1 if valid pointer, 0 otherwise.
-*/
-int isPointerValid(metadata* ptr) {
-	metadata* cur = (metadata*) myblock;
-	while(cur != NULL) {
-		if(cur == ptr) {
-			return(1);
+	// If this is the first block requested.
+	if(num_blocks == 0) {
+		
+		// Initializing my_heap to a default value.
+		for(c0=0; c0<HEAP_SIZE; ++c0) {
+			myblock[c0] = 0;
 		}
-		cur = cur->next;
-	}
-	return(0);
-}
 
-/*
-stitchFreeBlocks()
-metadata* ptr - the first of a chain of free blocks.
-returns the size of the conglomerated block.
-*/
-short stitchFreeBlocks(metadata* ptr) {
-	if(ptr == NULL) {
-		return(0);
+                if(DEBUG_ACTIVE) printf("making first block...");
+		metadata first_meta = {(short)(-1*(HEAP_SIZE-sizeof(metadata)))};
+		*((metadata*)(myblock)) = first_meta;
+		num_blocks += 1;	
+                if(DEBUG_ACTIVE) printf("made first block...");
+
 	}
-	if(ptr->used == '1') {
-		return(0);
-	}
-	short newSize = ptr->size;
-	metadata* cur = ptr->next;
-	while(cur != NULL) {
-		if (cur->used == '0'){
-			printf("inside while\n");
-			newSize += METADATA_SIZE + cur->size;
-			cur = cur->next;
+
+
+	// Looking through metadata for appropriate empty block.
+	if(DEBUG_ACTIVE) printf("searching for at least %d unused...", (short)user_size);
+	metadata* cur_meta;
+	int heap_index = 0;
+	for(c0=0; c0<num_blocks; ++c0) {
+		cur_meta = (metadata*)(myblock+heap_index);
+		
+		// If block is unused and big enough.
+		if((cur_meta->size < 0) && (-1*cur_meta->size > (short)user_size+sizeof(metadata))) {
+			if(DEBUG_ACTIVE) printf("found %d unused at %d\n", -1*(int)cur_meta->size, heap_index);
+			return(cur_meta);
 		}
-		else break;
+		
+		// Moving to the index of the next metadata.
+		if(cur_meta->size < 0) {
+			heap_index -= cur_meta->size;
+		} else {
+			heap_index += cur_meta->size;
+		}
+		heap_index += sizeof(metadata);
 	}
-	ptr->size = newSize;
-	ptr->next = cur;
-	if (cur != NULL) {
-		cur->prev = ptr;
-	}
-	return(ptr->size); 
+
+	// No unused blocks large enough.
+	if(DEBUG_ACTIVE) printf("no appropriate blocks found\n");
+	return(NULL);
 }
 
-void myfree(void* ptr, int line, char* file) {
-	printf("myfree() call\n");
-	metadata* metaPtr = (metadata*) ptr;
-	if (isPointerValid(ptr)) {
-		printf("\tptr is valid\n");
-		printf("\tCurrent pointer is %p, prev is %p\n", metaPtr, metaPtr->prev);
-		metaPtr->used = '0';
-		while (metaPtr != NULL){
-			printf("\tin while\n");
-			if ( metaPtr->prev != NULL) { // This line here needs to be fixed
-				printf("\tprev is not null\n");
-				if (metaPtr->prev == NULL){
-					break;
-				}
-				printf("\tprev is %p, and NULL is %p\n", metaPtr->prev, NULL);
-				if (metaPtr->prev->used == '0'){
-					metaPtr = metaPtr->prev;
-				}
-				else break;
-			}
-			else break;
-        }
-		printf("\t%d\n", metaPtr);
-        if(metaPtr == NULL) {
-			return;
-	    }
-		printf("\tfirst free block size %hi\n", metaPtr->size);
-		metaPtr->size = stitchFreeBlocks(metaPtr);	
-        printf("\tfirst free block size after %hi\n", metaPtr->size);
+void* split_block(metadata* meta_ptr, size_t user_size) {
+	int c0;
+
+	// Finding the location of the requested block.
+	metadata* cur_meta;
+	int heap_index = 0;
+	if(DEBUG_ACTIVE) printf("split_block(): searching for block...");
+	for(c0=0; c0<num_blocks; ++c0) {
+		cur_meta = (metadata*)(myblock+heap_index);
+		
+		// If block is found.
+		if(cur_meta == meta_ptr) {
+			if(DEBUG_ACTIVE) printf("found block at %d\n", heap_index);
+			break;
+		}
+
+		// Moving to next metadata.
+                if(cur_meta->size < 0) {
+                        heap_index -= cur_meta->size;
+                } else {
+                        heap_index += cur_meta->size;
+                }
+                heap_index += sizeof(metadata);
+	}
+
+	// If the requested block was not found.
+	if(c0 == num_blocks) {
+	        if(DEBUG_ACTIVE) printf("did not find block\n");
+	        return(NULL);
+	}
+
+	// Splitting the requested block.
+        metadata new_meta = {(short)(meta_ptr->size+(short)user_size+sizeof(metadata))};
+	*((metadata*)(myblock+heap_index+(short)user_size+sizeof(metadata))) = new_meta;
+	meta_ptr->size = (short)user_size;	
+	num_blocks += 1;
 	
+	// Returning a pointer for the user.
+	return((void*)((char*)meta_ptr)+sizeof(metadata));
+}
+
+// END ALLOCATION FUNCTIONS
+
+
+
+// START FREE FUNCTIONS
+
+void myfree(void* user_ptr, int line, char* file) {
+
+	// Marking the metadata associated with user_ptr as unused.
+	metadata* meta_ptr = mark_unused(user_ptr);
+	if(meta_ptr == NULL) {
+		printf("myfree() error on line %d in file %s.\n", line, file);
 		return;
 	}
-	else {
-    	printf("Invalid free() on line %d in file %s\n", line, file);
-    	return;
-	}	
+
+	// Stitching together adjancent free blocks.
+	stitch();
+
+	return;
 }
+
+metadata* mark_unused(void* user_ptr) {
+        int c0;
+	
+	if(DEBUG_ACTIVE) printf("mark_unused(): checking user pointer...");
+	metadata* user_meta = (metadata*)(((char*)user_ptr)-sizeof(metadata));
+        metadata* cur_ptr;
+	int heap_index = 0;
+        for(c0=0; c0<num_blocks; ++c0) {
+                cur_ptr = (metadata*)(myblock+heap_index);
+
+                // If target metadata is associated with current return pointer.
+                if(user_meta == cur_ptr) {
+			
+			// If user gave a valid pointer to free.
+			if(cur_ptr->size > 0) {
+				if(DEBUG_ACTIVE) printf("block of size %d marked unused.\n", cur_ptr->size);
+				cur_ptr->size *= -1;
+				return(cur_ptr);
+		
+			// If user gave pointer to a free block.
+			} else {
+				if(DEBUG_ACTIVE) printf("pointer to already free block.\n");
+				return(NULL);
+			}
+                }
+
+		// Move on to the next block to compare.
+		if(cur_ptr->size < 0) {
+			heap_index -= cur_ptr->size;
+		} else {
+			heap_index += cur_ptr->size;
+		}
+		heap_index += sizeof(metadata);
+        }
+
+	// User did not give a valid pointer.
+	if(DEBUG_ACTIVE) printf("did not find metadata associated with pointer.\n");
+        return(NULL);
+}
+
+int stitch() {
+        int c0;
+	
+        metadata* cur_meta;
+	metadata* next_meta;
+        int heap_index = 0;
+        if(DEBUG_ACTIVE) printf("stitch(): searching for blocks to stitch...");
+        for(c0=0; c0<num_blocks-1; ++c0) {
+                cur_meta = (metadata*)(myblock+heap_index);
+		if(cur_meta->size < 0) {
+			next_meta = (metadata*)(myblock+heap_index-cur_meta->size+sizeof(metadata));
+		} else {
+			next_meta = (metadata*)(myblock+heap_index+cur_meta->size+sizeof(metadata));
+		}
+
+                // If two unused blocks found.
+                if((cur_meta->size < 0) && (next_meta->size < 0)) {
+
+			if(DEBUG_ACTIVE) printf("stitching unused blocks of size %d and %d.\n", -1*cur_meta->size, -1*next_meta->size);
+
+			cur_meta->size += next_meta->size;
+			cur_meta->size -= sizeof(metadata);
+			num_blocks -= 1;
+
+			return(stitch());
+                }
+
+                // Moving to next metadata.
+                if(cur_meta->size < 0) {
+                        heap_index -= cur_meta->size;
+                } else {
+                        heap_index += cur_meta->size;
+                }
+                heap_index += sizeof(metadata);
+        }
+
+	if(DEBUG_ACTIVE) printf("no stitch opportunities found.\n");
+	return(0);
+	
+}
+
+// END FREE FUNCTIONS
+
+
+
+// START DEBUGGING FUNCTIONS
+
+void print_status() {
+	int c0;
+
+	int heap_index = 0;
+	metadata* cur_meta;
+	printf("\n\nmyblock status: %d blocks\n", num_blocks);
+        for(c0=0; c0<num_blocks; ++c0) {
+		cur_meta = (metadata*)(myblock+heap_index);
+		
+		printf("Block at %d:\t", heap_index);
+		if(cur_meta->size > 0) {
+			printf("Used:1\t");
+			printf("Size:%hd\n", cur_meta->size);
+		} else {
+			printf("Used:0\t");
+			printf("Size:%hd\n", -1*cur_meta->size);
+		}
+        	
+		// Moving to next metadata.
+       		if(cur_meta->size < 0) {
+        	        heap_index -= cur_meta->size;
+	        } else {
+                	heap_index += cur_meta->size;
+       		}
+	        heap_index += sizeof(metadata);
+
+	}
+	printf("\n");
+
+	return;
+}
+
+// END DEBUGGING FUNCTIONS
