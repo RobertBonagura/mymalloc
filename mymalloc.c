@@ -11,32 +11,43 @@ int num_blocks = 0;
 
 // START ALLOCATION FUNCTIONS
 
+/*
+mymalloc(): An implementation of malloc() using a 4096-char array.
+size_t user_size: the size of the block the user wants, in bytes.
+int line: the line of the file where mymalloc() is called.
+char* file: the name of the file where mymalloc() is called.
+returns a void pointer to a block with user_size allocated bytes, or a pointer to NULL if user_size is invalid or there is insufficient space.
+*/
 void* mymalloc(size_t user_size, int line, char* file) {
 
 	// Finding an empty block with enough space.
-	metadata* meta_ptr = find_block(user_size);
+	metadata* meta_ptr = find_block(user_size, line, file);
 
 	// Splitting the empty block into a used and unused part.
 	void* return_pointer = split_block(meta_ptr, user_size);
-	if(return_pointer == NULL) {
-		printf("mymalloc() error on line %d in file %s.\n", line, file);
-	}
 
 	return(return_pointer);
 }
 
-metadata* find_block(size_t user_size) {
+/*
+find_block(): Function to find an unused block large enough for the user's requested size.
+size_t user_size: the size of the block the user wants, in bytes.
+int line: the line of the file where mymalloc() is called.
+char* file: the name of the file where mymalloc() is called.
+returns a pointer to the metadata associated with an appropriate block, or a pointer to NULL if there are no appropriate blocks.
+*/
+metadata* find_block(size_t user_size, int line, char* file) {
 	int c0;	
 
 	if(DEBUG_ACTIVE) printf("find_block(): ");
 
 	// If user_size larger than max short value.
 	if(user_size > SHRT_MAX) {
-		if(DEBUG_ACTIVE) printf("user size too large.\n");
+		printf("mymalloc() error on line %d in file %s: no unused blocks of suffient size.\n", line, file);
 		return(NULL);
 	}
 	if(user_size <= 0) {
-		if(DEBUG_ACTIVE) printf("user size negative or zero.\n");
+		printf("mymalloc() error on line %d in file %s.\n", line, file);
 		return(NULL);
 	}
 	
@@ -80,10 +91,16 @@ metadata* find_block(size_t user_size) {
 	}
 
 	// No unused blocks large enough.
-	if(DEBUG_ACTIVE) printf("no appropriate blocks found\n");
+	printf("mymalloc() error on line %d in file %s: no unused blocks of suffient size.\n", line, file);
 	return(NULL);
 }
 
+/*
+split_block(): Function to split an unused block into a block for the user and a smaller unused block containing any extra space.
+metadata* meta_ptr: Pointer to metadata associated with the target unused block.
+size_t user_size: The size of the block requested by the user.
+returns a void pointer to a block with user_size allocated bytes, or a pointer to NULL if this cannot be done.
+*/
 void* split_block(metadata* meta_ptr, size_t user_size) {
 	int c0;
 
@@ -131,14 +148,16 @@ void* split_block(metadata* meta_ptr, size_t user_size) {
 
 // START FREE FUNCTIONS
 
+/*
+myfree(): An implementation of free() to go with mymalloc().
+void* user_ptr: A pointer to myblock returned by a prior mymalloc() call.
+int line: the line of the file where myfree() is called.
+char* file: the name of the file where myfree() is called.
+*/
 void myfree(void* user_ptr, int line, char* file) {
 
 	// Marking the metadata associated with user_ptr as unused.
-	metadata* meta_ptr = mark_unused(user_ptr);
-	if(meta_ptr == NULL) {
-		printf("myfree() error on line %d in file %s.\n", line, file);
-		return;
-	}
+	metadata* meta_ptr = mark_unused(user_ptr, line, file);
 
 	// Stitching together adjancent free blocks.
 	stitch();
@@ -146,7 +165,14 @@ void myfree(void* user_ptr, int line, char* file) {
 	return;
 }
 
-metadata* mark_unused(void* user_ptr) {
+/*
+mark_unused(): Function to find a block associated with a given pointer and mark it unused.
+void* user_ptr: A pointer to myblock returned by a prior mymalloc() call.
+int line: the line of the file where myfree() is called.
+char* file: the name of the file where myfree() is called.
+returns a pointer to metadata associated with the block just marked unused, or a pointer to NULL if this cannot be done.
+*/
+metadata* mark_unused(void* user_ptr, int line, char* file) {
         int c0;
 	
 	if(DEBUG_ACTIVE) printf("mark_unused(): checking user pointer...");
@@ -167,7 +193,7 @@ metadata* mark_unused(void* user_ptr) {
 		
 			// If user gave pointer to a free block.
 			} else {
-				if(DEBUG_ACTIVE) printf("pointer to already free block.\n");
+				printf("myfree() error on line %d in file %s: attempted to free unused block.\n", line, file);
 				return(NULL);
 			}
                 }
@@ -182,10 +208,14 @@ metadata* mark_unused(void* user_ptr) {
         }
 
 	// User did not give a valid pointer.
-	if(DEBUG_ACTIVE) printf("did not find metadata associated with pointer.\n");
+	printf("myfree() error on line %d in file %s: not a pointer to a valid block.\n", line, file);
         return(NULL);
 }
 
+/*
+stitch(): Function to combine adjacent unused blocks into a single unused block.
+returns the number of blocks stitched together.
+*/
 int stitch() {
         int c0;
 	
@@ -210,7 +240,7 @@ int stitch() {
 			cur_meta->size -= sizeof(metadata);
 			num_blocks -= 1;
 
-			return(stitch());
+			return(1 + stitch());
                 }
 
                 // Moving to next metadata.
@@ -233,6 +263,9 @@ int stitch() {
 
 // START DEBUGGING FUNCTIONS
 
+/*
+print_status(): Function to print out the current layout of myblock.
+*/
 void print_status() {
 	int c0;
 

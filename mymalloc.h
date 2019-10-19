@@ -17,12 +17,12 @@ typedef struct _metadata {
 
 // Allocation functions:
 void* mymalloc(size_t user_size, int line, char* file);
-metadata* find_block(size_t user_size);
+metadata* find_block(size_t user_size, int line, char* file);
 void* split_block(metadata* meta_ptr, size_t user_size);
 
 // Free functions:
 void myfree(void* user_ptr, int line, char* file);
-metadata* mark_unused(void* user_ptr);
+metadata* mark_unused(void* user_ptr, int line, char* file);
 int stitch();
 
 // Debugging functions:
