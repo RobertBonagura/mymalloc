@@ -1,4 +1,4 @@
-all: test.c memgrind.c mymalloc.o
+all: memgrind.c mymalloc.o
 	gcc -o memgrind memgrind.c mymalloc.o
 mymalloc.o: mymalloc.c
 	gcc -c mymalloc.c
