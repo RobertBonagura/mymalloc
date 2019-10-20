@@ -34,28 +34,33 @@ int main(int argc, char **argv) {
                 total_times[4] += e_times[i];
 		f_times[i] += workload_f();
                 total_times[5] += f_times[i];
-	}
+	}	
+
 	for(i=0; i<6; ++i) {
-		printf("Average time for workload %c: %f seconds.\n", 65+i, total_times[i]/100);
+		printf("Average time for workload %c: %f milliseconds.\n", 65+i, (total_times[i]/100)/1000);
 	}
 	return(0);
 }
+
 
 double workload_a() {
 	int i;
 	char *ptr;	
 	
 	printf("Workload A: 150 cycles of allocating and immediately freeing 1 byte.\n");
-	clock_t start = clock();
-	//printf("Working...\n");
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
+	printf("Working...\n");
 	for(i=0; i<150; ++i) {
 		ptr = malloc(sizeof(char));
 		free(ptr);
-		//printf("malloc()ed and free()ed %d\n", i);
 	}
-	clock_t end = clock();
+	gettimeofday(&end, NULL);
 	printf("Workload A completed.\n");
-	return((end - start)/(double)CLOCKS_PER_SEC);
+	long seconds = (end.tv_sec - start.tv_sec);
+	long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+	double result = micros;
+	return result;
 }
 
 double workload_b() {
@@ -63,8 +68,9 @@ double workload_b() {
 	char *arr[50];
 
         printf("Workload B: 3 cycles of allocating 1 byte for each index in a 50-cell array, then freeing each index in the array.\n");
-        clock_t start = clock();
-	//printf("Working...\n");
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
+	printf("Working...\n");
 	for(i=0; i<3; ++i) {
 		for(j=0; j<50; ++j) {
 			arr[j] = malloc(sizeof(char));
@@ -73,18 +79,21 @@ double workload_b() {
                         free(arr[j]);
                 }
 	}
-	clock_t end = clock();
-        printf("Workload B completed.\n");
-        return((end - start)/(double)CLOCKS_PER_SEC);
+    printf("Workload B completed.\n");
+	gettimeofday(&end, NULL);
+	long seconds = (end.tv_sec - start.tv_sec);
+	long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+	double result = micros;
+	return result;
 }
 
 double workload_c() {
 	int should_free, i_malloc, i_free;
 	char *arr[50];
-	
-        printf("Workload C: Randomly choosing between allocating and freeing 1 byte until 50 allocations and frees have been performed.\n");
-        clock_t start = clock();
-	//printf("Working...\n");
+    printf("Workload C: Randomly choosing between allocating and freeing 1 byte until 50 allocations and frees have been performed.\n");
+	printf("Working...\n");
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
 	i_malloc = 0;
 	i_free = 0;
 	while(i_malloc<50) {
@@ -101,9 +110,12 @@ double workload_c() {
 		free(arr[i_free]);
 		++i_free;
 	}
-	clock_t end = clock();
 	printf("Workload C completed.\n");
-        return((end - start)/(double)CLOCKS_PER_SEC);
+	gettimeofday(&end, NULL);
+	long seconds = (end.tv_sec - start.tv_sec);
+	long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+	double result = micros;
+	return result;
 }
 
 double workload_d() {
@@ -111,7 +123,8 @@ double workload_d() {
         char *arr[50];
 
         printf("Workload D: Randomly choosing between allocating and freeing between 1 and 64 bytes until 50 allocations and frees have been performed.\n");
-        clock_t start = clock();
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
 	printf("Working...\n");
         i_malloc = 0;
         i_free = 0;
@@ -142,14 +155,18 @@ double workload_d() {
                 free(arr[i_free]);
                 ++i_free;
         }
-	clock_t end = clock();
         printf("Workload D completed.\n");
-        return((end - start)/(double)CLOCKS_PER_SEC);
+	gettimeofday(&end, NULL);
+	long seconds = (end.tv_sec - start.tv_sec);
+	long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+	double result = micros;
+	return result;
 }
 
 double workload_e() {
 	printf("Workload E: Fills heap with pointers, and then continues free and mallocing pointers 150 times. See testplan.txt for details.\n");
-	clock_t start = clock();
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
 	printf("Working...\n");
 	
 	// Initialize the arrays to NULL
@@ -204,13 +221,18 @@ double workload_e() {
 	for (i = 0; i < numPtrs; i++){
 		free(ptrs[i]);
 	}
-	clock_t end = clock();
-        return((end - start)/(double)CLOCKS_PER_SEC);
+	printf("Workload E completed\n");
+	gettimeofday(&end, NULL);
+	long seconds = (end.tv_sec - start.tv_sec);
+	long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+	double result = micros;
+	return result;
 }
 
 double workload_f() {
 	printf("Workload F: Splits 50:50 chance of either mallocing space to create and print a string, followed by freeing that pointer OR randomly test one of the Detectable Errors 	described in the assignment sheet. This is done 150 times. \n");
-	clock_t start = clock();
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
 	printf("Working...\n");
 	int i_reps;
 	for (i_reps = 0; i_reps < 150; i_reps++){
@@ -253,9 +275,12 @@ double workload_f() {
 			}
 		}
 	}
-    clock_t end = clock();
 	printf("Workload F completed.\n");
-    return((end - start)/(double)CLOCKS_PER_SEC);
+	gettimeofday(&end, NULL);
+	long seconds = (end.tv_sec - start.tv_sec);
+	long micros = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+	double result = micros;
+	return result;
 }
 
 

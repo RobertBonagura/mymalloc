@@ -1,4 +1,11 @@
+Average run-time:
 
+Average time for workload A: 0.008270 milliseconds.
+Average time for workload B: 0.077410 milliseconds.
+Average time for workload C: 0.014770 milliseconds.
+Average time for workload D: 0.020080 milliseconds.
+Average time for workload E: 1.656650 milliseconds.
+Average time for workload F: 0.720140 milliseconds.
 
 Workload E:
 
